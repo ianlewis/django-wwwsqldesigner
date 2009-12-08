@@ -11,6 +11,6 @@ var CONFIG = {
 	RELATION_THICKNESS:2,
 	RELATION_SPACING:15,
 	
-	STATIC_PATH: "",
+	STATIC_PATH: "/static/wwwsqldesigner/",
 	XHR_PATH: ""
 }

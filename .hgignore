@@ -7,6 +7,8 @@ syntax: glob
 *.o
 *.pyc
 *.swp
+*.db
+django_wwwsqldesigner.egg-info
 
 syntax: regexp
 .*\#.*\#$ 
