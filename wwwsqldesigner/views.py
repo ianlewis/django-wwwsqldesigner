@@ -9,7 +9,7 @@ def map_db():
     from wwwsqldesigner.settings import DB_MAP
     try:
         return DB_MAP[settings.DATABASE_ENGINE.split(".")[-1]]
-    except IndexError:
+    except KeyError:
         return 'mysql'
 
 def index(request):
