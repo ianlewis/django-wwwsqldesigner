@@ -13,7 +13,6 @@ def map_db():
         return 'mysql'
 
 def index(request):
-    # TODO: set dbtype based on django settings
     return direct_to_template(request, "wwwsqldesigner/index.html", {})
 
 def config(request):
@@ -65,6 +64,7 @@ def getdb(request):
                     "table_name": field.rel.to._meta.db_table,
                     "field_name": rel_field_name,
                 }
+            #TODO: Support ManyToMany fields
             fields_list.append(field_dict)
 
         table_list.append({
