@@ -14,7 +14,7 @@
 	<!--[if IE 7]><link rel="stylesheet" type="text/css" href="styles/ie7.css" /><![endif]-->
   <link rel="stylesheet" href="{{ MEDIA_URL }}/wwwsqldesigner/styles/print.css" type="text/css" media="print" />
   <script type="text/javascript" src="{{ MEDIA_URL }}/wwwsqldesigner/js/oz.js"></script>
-  <script type="text/javascript" src="{{ MEDIA_URL }}/wwwsqldesigner/js/config.js"></script>
+  <script type="text/javascript" src="{% url wwwsqldesigner_config %}"></script>
   <script type="text/javascript" src="{{ MEDIA_URL }}/wwwsqldesigner/js/wwwsqldesigner.js"></script>
 </head>
 
@@ -230,9 +230,6 @@
 	
 	<script type="text/javascript">
 		var d = new SQL.Designer();
-    //d.setOption("db", "{{ db_type }}"); 
-    //d.setOption("staticpath", "{{ MEDIA_URL }}wwwsqldesigner/");
-    //d.requestDB();
 	</script>
 </body>
 </html>

@@ -1,42 +1,76 @@
-# Create your views here.
-
 from django.http import HttpResponse
 from django.views.generic.simple import direct_to_template
+from django.conf import settings
+from django.db.models import get_models
+from django.db.models import ForeignKey, ManyToManyField
+from django.utils.importlib import import_module
+
+def map_db():
+    from wwwsqldesigner.settings import DB_MAP
+    try:
+        return DB_MAP[settings.DATABASE_ENGINE.split(".")[-1]]
+    except IndexError:
+        return 'mysql'
 
 def index(request):
     # TODO: set dbtype based on django settings
-    return direct_to_template(request, "wwwsqldesigner/index.html", {
-        "db_type": "mysql",
-    })
+    return direct_to_template(request, "wwwsqldesigner/index.html", {})
+
+def config(request):
+    return direct_to_template(request, "wwwsqldesigner/config.js", {
+        'default_db': map_db(),
+    }, mimetype="text/javascript")
 
 def getdb(request):
-    return HttpResponse("""<?xml version="1.0" encoding="utf-8" ?><sql><datatypes db="mysql">
-	<group label="Numeric" color="rgb(238,238,170)">
-		<type label="Integer" length="0" sql="INTEGER" re="INT" quote=""/>
-		<type label="Decimal" length="1" sql="DECIMAL" re="DEC" quote=""/>
-		<type label="Single precision" length="0" sql="FLOAT" quote=""/>
-		<type label="Double precision" length="0" sql="DOUBLE" re="DOUBLE" quote=""/>
-	</group>
+    app_name = request.GET.get("database")
+    app_mod = None
+    if app_name != "django":
+        try:
+            app_mod = import_module(app_name+".models")        
+        except ImportError:
+            pass
+    table_list = []
 
-	<group label="Character" color="rgb(255,200,200)">
-		<type label="Char" length="1" sql="CHAR" quote="'"/>
-		<type label="Varchar" length="1" sql="VARCHAR" quote="'"/>
-		<type label="Text" length="0" sql="MEDIUMTEXT" re="TEXT" quote="'"/>
-		<type label="Binary" length="1" sql="BINARY" quote="'"/>
-		<type label="Varbinary" length="1" sql="VARBINARY" quote="'"/>
-		<type label="BLOB" length="0" sql="BLOB" re="BLOB" quote="'"/>
-	</group>
+    for model in get_models(app_mod):
+        fields_list = []
+        key_list = []
 
-	<group label="Date &amp; Time" color="rgb(200,255,200)">
-		<type label="Date" length="0" sql="DATE" quote="'"/>
-		<type label="Time" length="0" sql="TIME" quote="'"/>
-		<type label="Datetime" length="0" sql="DATETIME" quote="'"/>
-		<type label="Year" length="0" sql="YEAR" quote=""/>
-		<type label="Timestamp" length="0" sql="TIMESTAMP" quote="'"/>
-	</group>
-	
-	<group label="Miscellaneous" color="rgb(200,200,255)">
-		<type label="ENUM" length="1" sql="ENUM" quote=""/>
-		<type label="SET" length="1" sql="SET" quote=""/>
-	</group>
-</datatypes><table x="50" y="50" name="Producer"><row name="id" null="0" autoincrement="1"><datatype>INTEGER</datatype></row><row name="name" null="1" autoincrement="0"><datatype>VARCHAR(100)</datatype><default>NULL</default></row><key type="PRIMARY" name=""><part>id</part></key></table><table x="574" y="66" name="Consumer"><row name="id" null="0" autoincrement="1"><datatype>INTEGER</datatype></row><row name="name" null="1" autoincrement="0"><datatype>VARCHAR(100)</datatype><default>NULL</default></row><key type="PRIMARY" name=""><part>id</part></key></table><table x="195" y="333" name="Product"><row name="id" null="0" autoincrement="1"><datatype>INTEGER</datatype></row><row name="id_Producer" null="0" autoincrement="1"><datatype>INTEGER</datatype><relation table="Producer" row="id" /></row><row name="name" null="1" autoincrement="0"><datatype>VARCHAR(100)</datatype></row><key type="PRIMARY" name=""><part>id</part></key></table><table x="383" y="227" name="Garbage"><row name="id" null="0" autoincrement="1"><datatype>INTEGER</datatype></row><row name="id_Product" null="0" autoincrement="1"><datatype>INTEGER</datatype><relation table="Product" row="id" /></row><row name="id_Consumer" null="0" autoincrement="1"><datatype>INTEGER</datatype><relation table="Consumer" row="id" /></row><row name="consumed" null="0" autoincrement="0"><datatype>TIMESTAMP</datatype></row><key type="PRIMARY" name=""><part>id</part></key></table></sql>""", mimetype="text/xml")
+        for field in model._meta.fields:
+            attname,column = field.get_attname_column()
+            if field.primary_key:
+                key_list.append({
+                    "type": "primary",  
+                    "field_name": column,
+                })
+            if field.unique:
+                key_list.append({
+                    "type": "unique",
+                    "field_name": column,
+                })
+                
+            field_dict = {
+                "name": column,
+                "null": field.null,
+                "datatype": field.db_type(),
+                #"default": field.default,
+                "comment": field.verbose_name,
+            }
+            if isinstance(field, ForeignKey): 
+                rel_field_name = field.rel.field_name
+                for rel_table_field in field.rel.to._meta.fields:
+                    if rel_table_field.name == field.rel.field_name:
+                        rel_attname,rel_field_name = rel_table_field.get_attname_column()
+
+                field_dict["relation"] = {
+                    "table_name": field.rel.to._meta.db_table,
+                    "field_name": rel_field_name,
+                }
+            fields_list.append(field_dict)
+
+        table_list.append({
+            "name": model._meta.db_table,
+            "fields": fields_list,
+            "table_keys": key_list,
+        })
+
+    return direct_to_template(request, "wwwsqldesigner/dbschema.xml", {"tables": table_list}, mimetype="text/xml")
