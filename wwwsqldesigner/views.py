@@ -64,8 +64,53 @@ def getdb(request):
                     "table_name": field.rel.to._meta.db_table,
                     "field_name": rel_field_name,
                 }
-            #TODO: Support ManyToMany fields
             fields_list.append(field_dict)
+
+        for m2m_field in model._meta.many_to_many:
+            if m2m_field.rel.through:
+                # If there is a through model then it will be added separately
+                continue
+            m2m_table_name = m2m_field.m2m_db_table()
+            attname,model_pk_column = model._meta.pk.get_attname_column()
+            to_model = m2m_field.rel.to
+            attname,to_pk_column = to_model._meta.pk.get_attname_column() 
+
+            # Add ManyToMany table
+            table_list.append({
+                "name": m2m_table_name,
+                "fields": [
+                    {
+                        "name": "id",
+                        "null": False,
+                        "datatype": "integer",
+                    },
+                    {
+                        "name": model.__name__.lower() + "_id",
+                        "null": False,
+                        "datatype": model._meta.pk.db_type(),
+                        "relation": {
+                            "table_name": model._meta.db_table,
+                            "field_name": model_pk_column,
+                        }
+                    },
+                    {
+                        "name": to_model.__name__.lower() + "_id",
+                        "null": False,
+                        "datatype": to_model._meta.pk.db_type(),
+                        "relation": {
+                            "table_name": to_model._meta.db_table,
+                            "field_name": to_pk_column,
+                        }
+                    },
+                ],
+                "keys": [
+                    {
+                        "type": "primary",  
+                        "field_name": "id", 
+                    },
+                ],
+            })
+
 
         table_list.append({
             "name": model._meta.db_table,
